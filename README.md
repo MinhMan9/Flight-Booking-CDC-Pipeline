@@ -3,6 +3,7 @@
 
 
 # Cấu trúc thư mục
+```
 flight-booking-cdc-pipeline/
 │
 ├── docker-compose.yml          # File khởi tạo toàn bộ hạ tầng (Kafka, MinIO, SQL Server)
@@ -20,3 +21,4 @@ flight-booking-cdc-pipeline/
 └── connectors/                 # Thư mục chứa cấu hình của Kafka Connect
     ├── debezium-source.json    # File JSON cấu hình Debezium đọc từ SQL Server
     └── minio-sink.json         # File JSON cấu hình đẩy dữ liệu từ Kafka xuống Data Lake (MinIO)
+```
