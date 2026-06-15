@@ -34,13 +34,19 @@ AIRPORTS = ['SGN', 'HAN', 'DAD', 'CXR', 'PQC', 'VCA', 'HUI', 'VDO']
 AIRLINES = ['VN', 'VJ', 'QH', 'VU']
 PAYMENT_METHODS = ['CREDIT_CARD', 'ATM_CARD', 'E_WALLET', 'CASH']
 
+generated_pnrs = set()
+
 def generate_pnr():
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    while True:
+        pnr = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        if pnr not in generated_pnrs:
+            generated_pnrs.add(pnr)
+            return pnr
 
 # ==========================================
 # 3. HÀM CHẠY LOGIC SINH DỮ LIỆU CHÍNH
 # ==========================================
-def simulate_booking_transaction(cursor):
+def simulate_booking_transaction(cursor, count):
     # Thời gian giả lập
     created_at = fake.date_time_between(start_date='-30d', end_date='now')
     updated_at = created_at + timedelta(minutes=random.randint(5, 120))
@@ -115,7 +121,8 @@ def simulate_booking_transaction(cursor):
         """, (pnr_id, route[1], route[0], return_date, airline, str(random.randint(10, 9999)), created_at, updated_at))
 
     # 5. LOGIC THANH TOÁN & XUẤT VÉ (80% thanh toán thành công)
-    if random.random() < 0.8:
+    is_ticketed = random.random() < 0.8
+    if is_ticketed:
         # Cập nhật trạng thái PNR thành TICKETED
         cursor.execute("UPDATE pnr_records SET booking_status = 'TICKETED', updated_at = ? WHERE pnr_id = ?", (updated_at, pnr_id))
         
@@ -152,7 +159,7 @@ def simulate_booking_transaction(cursor):
                 VALUES (?, ?, ?, 'ISSUED', ?, ?)
             """, (ticket_no, pid, fare_class, updated_at, updated_at))
             
-    print(f"[*] Đã sinh thành công PNR: {pnr_id} - Khách: {num_passengers} - Chặng: {num_segments} - Trạng thái: {'TICKETED' if random.random() < 0.8 else 'CREATED'}")
+    print(f"[{count}/100000] Đã sinh thành công PNR: {pnr_id} - Khách: {num_passengers} - Chặng: {num_segments} - Trạng thái: {'TICKETED' if is_ticketed else 'CREATED'}")
 
 # ==========================================
 # 4. CHẠY VÒNG LẶP LIÊN TỤC (CDC TRIGGER)
@@ -163,14 +170,16 @@ if __name__ == "__main__":
         conn = pyodbc.connect(conn_str)
         cursor = conn.cursor()
         
-        # Vòng lặp vô tận mô phỏng traffic
-        while True:
-            simulate_booking_transaction(cursor)
+        total_records = 100000
+        count = 0
+        
+        # Vòng lặp sinh 100,000 records
+        while count < total_records:
+            count += 1
+            simulate_booking_transaction(cursor, count)
             conn.commit() # Lưu vào database
             
-            # Tạm nghỉ 3-5 giây để giống hệ thống thật
-            sleep_time = random.uniform(3, 5)
-            time.sleep(sleep_time)
+        print(f"Đã sinh thành công đầy đủ {total_records} records!")
             
     except Exception as e:
         print(f"❌ Lỗi: {e}")

@@ -1,7 +1,8 @@
 -- =======================================================================
 -- SCRIPT RESET DỮ LIỆU TOÀN BỘ HỆ THỐNG
 -- =======================================================================
-
+USE FlightBookingCDC;
+GO
 -- 1. XÓA DỮ LIỆU THEO THỨ TỰ TỪ NGỌN VỀ GỐC (Tránh lỗi Foreign Key)
 -- Xóa bảng cháu (phụ thuộc vào hành khách)
 DELETE FROM tickets;

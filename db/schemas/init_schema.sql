@@ -59,7 +59,7 @@ CREATE TABLE payments (
     pnr_id VARCHAR(6) NOT NULL FOREIGN KEY REFERENCES pnr_records(pnr_id),
     payment_method VARCHAR(20) 
         CHECK (payment_method IN ('CREDIT_CARD', 'ATM_CARD', 'E_WALLET', 'CASH')),
-    amount DECIMAL(10,2) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'VND',
     payment_status VARCHAR(20) 
         CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED', 'REFUNDED')),
