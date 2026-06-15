@@ -18,10 +18,10 @@ fake = Faker('vi_VN')
 # ==========================================
 # 1. CẤU HÌNH KẾT NỐI SQL SERVER
 # ==========================================
-SERVER = 'localhost,1433' # Hoặc tên container nếu chạy trong docker-network
-DATABASE = 'FlightBookingCDC'
-USERNAME = 'sa'
-PASSWORD = os.getenv('DB_PASSWORD') # Đọc mật khẩu từ file .env
+SERVER = os.getenv('DB_SERVER')
+DATABASE = os.getenv('DB_NAME')
+USERNAME = os.getenv('DB_USERNAME')
+PASSWORD = os.getenv('DB_PASSWORD')
 
 # Chuỗi kết nối (Dùng ODBC Driver 17 hoặc 18 tùy máy)
 conn_str = f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={SERVER};DATABASE={DATABASE};UID={USERNAME};PWD={PASSWORD};TrustServerCertificate=yes'

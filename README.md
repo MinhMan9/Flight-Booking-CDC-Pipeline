@@ -46,6 +46,9 @@ pip install -r requirements.txt
 ### 2. Thiết lập cấu hình kết nối (.env)
 Đảm bảo bạn đã cấu hình tệp `.env` ở thư mục gốc của dự án chứa mật khẩu SQL Server phù hợp:
 ```env
+DB_SERVER =Server_Database
+DB_NAME =Tên_Database
+DB_USERNAME =Tên_SQL_Server_Của_Bạn
 DB_PASSWORD=Mật_Khẩu_SQL_Server_Của_Bạn
 ```
 
