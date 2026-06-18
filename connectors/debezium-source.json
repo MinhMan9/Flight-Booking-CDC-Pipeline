@@ -1,0 +1,16 @@
+{
+    "name": "sqlserver-flightbooking-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
+        "tasks.max": "1",
+        "database.hostname": "mssql",
+        "database.port": "1433",
+        "database.user": "sa",
+        "database.password": "yourDBPasswordHere",
+        "database.names": "FlightBookingCDC",
+        "topic.prefix": "FlightBookingCDC",
+        "database.encrypt": "false",
+        "schema.history.internal.kafka.bootstrap.servers": "kafka:29092",
+        "schema.history.internal.kafka.topic": "schema-changes.FlightBookingCDC"
+    }
+}

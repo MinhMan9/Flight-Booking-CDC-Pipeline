@@ -65,6 +65,26 @@ services:
     networks:
       - cdc_network
 
+  # ==========================================
+  # 4. DEBEZIUM (KAFKA CONNECT)
+  # ==========================================
+  debezium:
+    image: quay.io/debezium/connect:2.5
+    container_name: debezium
+    depends_on:
+      - kafka
+      - mssql
+    ports:
+      - "8083:8083"
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=connect_configs
+      - OFFSET_STORAGE_TOPIC=connect_offsets
+      - STATUS_STORAGE_TOPIC=connect_statuses
+    networks:
+      - cdc_network
+
 # ==========================================
 # KHAI BÁO MẠNG VÀ Ổ CỨNG ÁNH XẠ
 # ==========================================
