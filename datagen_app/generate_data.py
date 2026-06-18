@@ -1,33 +1,17 @@
-import pyodbc
 import random
 import string
 import uuid
 import time
-import os
 import unicodedata
-from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from faker import Faker
-
-# Load biến môi trường từ file .env
-load_dotenv()
+from db_connection import get_db_connection
 
 # Khởi tạo Faker tiếng Việt
 fake = Faker('vi_VN')
 
 # ==========================================
-# 1. CẤU HÌNH KẾT NỐI SQL SERVER
-# ==========================================
-SERVER = os.getenv('DB_SERVER')
-DATABASE = os.getenv('DB_NAME')
-USERNAME = os.getenv('DB_USERNAME')
-PASSWORD = os.getenv('DB_PASSWORD')
-
-# Chuỗi kết nối (Dùng ODBC Driver 17 hoặc 18 tùy máy)
-conn_str = f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={SERVER};DATABASE={DATABASE};UID={USERNAME};PWD={PASSWORD};TrustServerCertificate=yes'
-
-# ==========================================
-# 2. KHAI BÁO MIỀN DỮ LIỆU (DOMAIN VALUES)
+# 1. KHAI BÁO MIỀN DỮ LIỆU (DOMAIN VALUES)
 # ==========================================
 CHANNELS = ['WEB', 'APP', 'AGENCY', 'TICKET_OFFICE', 'CALL_CENTER']
 AIRPORTS = ['SGN', 'HAN', 'DAD', 'CXR', 'PQC', 'VCA', 'HUI', 'VDO']
@@ -44,7 +28,7 @@ def generate_pnr():
             return pnr
 
 # ==========================================
-# 3. HÀM CHẠY LOGIC SINH DỮ LIỆU CHÍNH
+# 2. HÀM CHẠY LOGIC SINH DỮ LIỆU CHÍNH
 # ==========================================
 def simulate_booking_transaction(cursor, count):
     # Thời gian giả lập
@@ -162,12 +146,12 @@ def simulate_booking_transaction(cursor, count):
     print(f"[{count}/100000] Đã sinh thành công PNR: {pnr_id} - Khách: {num_passengers} - Chặng: {num_segments} - Trạng thái: {'TICKETED' if is_ticketed else 'CREATED'}")
 
 # ==========================================
-# 4. CHẠY VÒNG LẶP LIÊN TỤC (CDC TRIGGER)
+# 3. CHẠY VÒNG LẶP LIÊN TỤC (CDC TRIGGER)
 # ==========================================
 if __name__ == "__main__":
     print("🚀 Khởi động luồng sinh dữ liệu Flight Booking CDC...")
     try:
-        conn = pyodbc.connect(conn_str)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         total_records = 100000
