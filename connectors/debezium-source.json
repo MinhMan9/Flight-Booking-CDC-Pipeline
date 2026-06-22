@@ -6,11 +6,15 @@
         "database.hostname": "mssql",
         "database.port": "1433",
         "database.user": "sa",
-        "database.password": "yourDBPasswordHere",
+        "database.password": "yourPassword",
         "database.names": "FlightBookingCDC",
-        "topic.prefix": "FlightBookingCDC",
+        "topic.prefix": "cdc",
         "database.encrypt": "false",
         "schema.history.internal.kafka.bootstrap.servers": "kafka:29092",
-        "schema.history.internal.kafka.topic": "schema-changes.FlightBookingCDC"
+        "schema.history.internal.kafka.topic": "schema-changes.FlightBookingCDC",
+        "transforms": "route",
+        "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+        "transforms.route.regex": "^[^.]+\\.(.*)",
+        "transforms.route.replacement": "$1"
     }
 }
