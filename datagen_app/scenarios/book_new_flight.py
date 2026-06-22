@@ -39,7 +39,7 @@ def run(cursor, fake):
     cursor.execute("""
         INSERT INTO pnr_records (pnr_id, booking_channel, booking_status, created_at, updated_at)
         VALUES (?, ?, 'CREATED', ?, ?)
-    """, (pnr_id, channel, created_at, updated_at))
+    """, (pnr_id, channel, created_at, created_at))
 
     # 2. GHI NHẬN SỰ KIỆN: CREATED
     cursor.execute("""
@@ -74,7 +74,7 @@ def run(cursor, fake):
         cursor.execute("""
             INSERT INTO passengers (pnr_id, first_name, last_name, email, passport_number, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (pnr_id, fname, lname, email, passport, created_at, updated_at))
+        """, (pnr_id, fname, lname, email, passport, created_at, created_at))
 
     # 4. TẠO CHẶNG BAY (1 chiều hoặc Khứ hồi)
     num_segments = random.choices([1, 2], weights=[70, 30], k=1)[0]
@@ -85,14 +85,14 @@ def run(cursor, fake):
     cursor.execute("""
         INSERT INTO flight_segments (pnr_id, origin_airport, dest_airport, flight_date, airline_code, flight_number, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (pnr_id, route[0], route[1], flight_date, airline, str(random.randint(10, 9999)), created_at, updated_at))
+    """, (pnr_id, route[0], route[1], flight_date, airline, str(random.randint(10, 9999)), created_at, created_at))
     
     if num_segments == 2: # Chiều về
         return_date = (datetime.strptime(flight_date, '%Y-%m-%d') + timedelta(days=random.randint(2, 10))).strftime('%Y-%m-%d')
         cursor.execute("""
             INSERT INTO flight_segments (pnr_id, origin_airport, dest_airport, flight_date, airline_code, flight_number, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (pnr_id, route[1], route[0], return_date, airline, str(random.randint(10, 9999)), created_at, updated_at))
+        """, (pnr_id, route[1], route[0], return_date, airline, str(random.randint(10, 9999)), created_at, created_at))
 
     print(f"{CREATE_COLOR} BOOKING {RESET_COLOR} Đã tạo thành công PNR: {pnr_id} - Khách: {num_passengers} - Chặng: {num_segments} - Trạng thái: CREATED")
     return pnr_id
