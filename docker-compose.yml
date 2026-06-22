@@ -47,7 +47,7 @@ services:
     networks:
       - cdc_network
     volumes:
-      - kafka_data:/var/lib/kafka/data
+      - kafka_data:/tmp/kraft-combined-logs
 
   # ==========================================
   # 3. KAFKA UI
@@ -82,6 +82,29 @@ services:
       - CONFIG_STORAGE_TOPIC=connect_configs
       - OFFSET_STORAGE_TOPIC=connect_offsets
       - STATUS_STORAGE_TOPIC=connect_statuses
+
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - debezium_plugins:/kafka/connect
+    networks:
+      - cdc_network
+
+  # ==========================================
+  # 5. DATA LAKE (MINIO - S3 COMPATIBLE)
+  # ==========================================
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # Cổng API để Kafka Connect đẩy dữ liệu vào
+      - "9001:9001" # Cổng Web UI để bạn vào xem dữ liệu
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
     networks:
       - cdc_network
 
@@ -97,3 +120,7 @@ volumes:
     name: "sqlserver_data"
   kafka_data:
     name: "kafka_data"
+  debezium_plugins:
+    name: "debezium_plugins"
+  minio_data:
+    name: "minio_data"
