@@ -1,5 +1,5 @@
 {
-    "name": "sqlserver-flightbooking-connector",
+    "name": "sqlserver-flightbooking-connector-v4",
     "config": {
         "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
         "tasks.max": "1",
@@ -11,7 +11,10 @@
         "topic.prefix": "cdc",
         "database.encrypt": "false",
         "schema.history.internal.kafka.bootstrap.servers": "kafka:29092",
-        "schema.history.internal.kafka.topic": "schema-changes.FlightBookingCDC",
+        "schema.history.internal.kafka.topic": "schema-changes.FlightBookingCDC.v4",
+        "snapshot.mode": "initial",
+        "decimal.handling.mode": "double",
+        "time.precision.mode": "connect",
         "transforms": "route",
         "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
         "transforms.route.regex": "^[^.]+\\.(.*)",

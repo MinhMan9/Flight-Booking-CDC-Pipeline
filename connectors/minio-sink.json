@@ -11,13 +11,20 @@
         "s3.part.size": "5242880",
         "flush.size": "5",
         "storage.class": "io.confluent.connect.s3.storage.S3Storage",
-        "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
-        "schema.compatibility": "NONE",
-        "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
-        "path.format": "'year'=YYYY/'month'=MM/'day'=dd",
-        "partition.duration.ms": "86400000",
-        "locale": "en-US",
-        "timezone": "Asia/Ho_Chi_Minh",
-        "timestamp.extractor": "Wallclock"
+        "format.class": "io.confluent.connect.s3.format.parquet.ParquetFormat",
+        "schema.compatibility": "BACKWARD",
+        "transforms": "unwrap,insertTs,formatDate",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false",
+        "transforms.unwrap.delete.handling.mode": "rewrite",
+        "transforms.unwrap.add.fields": "op,table,source.ts_ms",
+        "transforms.insertTs.type": "org.apache.kafka.connect.transforms.InsertField$Value",
+        "transforms.insertTs.timestamp.field": "event_date",
+        "transforms.formatDate.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+        "transforms.formatDate.field": "event_date",
+        "transforms.formatDate.format": "yyyy-MM-dd",
+        "transforms.formatDate.target.type": "string",
+        "partitioner.class": "io.confluent.connect.storage.partitioner.FieldPartitioner",
+        "partition.field.name": "event_date,__op"
     }
 }
