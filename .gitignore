@@ -37,3 +37,6 @@ docker-compose.override.yml
 
 # Reports
 reports/
+
+# Plugin
+*.jar
