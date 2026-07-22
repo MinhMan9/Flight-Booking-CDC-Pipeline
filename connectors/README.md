@@ -11,3 +11,13 @@ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" 
 curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @connectors/minio-sink.json
 ```
 *(Lưu ý: Nhớ tạo trước `bucket` trên MinIO và điền đúng `tên bucket` trong `minio-sink.json`. Nếu quên thì tạo lại rồi chạy lệnh `curl -X POST localhost:8083/connectors/minio-s3-sink-connector/restart`):*
+
+## Lệnh kiểm tra trạng thái Connector
+```bash
+curl -s localhost:8083/connectors/sqlserver-flightbooking-connector/status | jq 
+```
+
+## Lệnh xoá Connector
+```bash
+curl -X DELETE http://localhost:8083/connectors/sqlserver-flightbooking-connector
+```
