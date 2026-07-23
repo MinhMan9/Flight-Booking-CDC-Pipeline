@@ -1,3 +1,4 @@
 Faker
 pyodbc
 python-dotenv
+pyspark==3.5.1

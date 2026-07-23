@@ -5,12 +5,13 @@
 ```
 flight-booking-cdc-pipeline/
 │
-├── docker-compose.yml          # File khởi tạo toàn bộ hạ tầng (Kafka, SQL Server, Kafka UI)
-├── .env                        # Chứa các biến môi trường bảo mật (Mật khẩu DB, Kafka Cluster ID)
+├── docker-compose.yml          # File khởi tạo toàn bộ hạ tầng (Kafka, SQL Server, Kafka UI, MinIO, Spark, Iceberg REST,...)
+├── .env                        # Chứa các biến môi trường cấu hình hệ thống
 ├── requirements.txt            # Danh sách thư viện Python cần cài đặt (faker, pyodbc,...)
 ├── README.md                   # Tài liệu hướng dẫn cách chạy dự án
+├── download_jars.sh            # Script bash tải các file jar phục vụ Spark
 │
-├── db/                        # Thư mục chứa toàn bộ script Database
+├── db/                         # Thư mục chứa toàn bộ script Database
 │   ├── schemas/
 │   │   ├── init_schema.sql     # Thiết lập cấu trúc cơ sở dữ liệu ban đầu
 │   │   ├── drop_schema.sql     # Xóa toàn bộ các bảng trong database
@@ -29,9 +30,19 @@ flight-booking-cdc-pipeline/
 │       ├── change_flight.py    # Kịch bản thay đổi chuyến bay (Change Flight)
 │       └── make_payment.py     # Kịch bản thanh toán (Make Payment)
 │
-└── connectors/                 # Thư mục chứa cấu hình của Kafka Connect
-    ├── debezium-source.json    # File JSON cấu hình Debezium đọc từ SQL Server
-    └── minio-sink.json         # File JSON cấu hình đẩy dữ liệu từ Kafka xuống Data Lake (MinIO)
+├── connectors/                 # Thư mục chứa cấu hình của Kafka Connect
+│   ├── debezium-source.json    # File JSON cấu hình Debezium đọc từ SQL Server
+│   └── minio-sink.json         # File JSON cấu hình đẩy dữ liệu từ Kafka xuống Data Lake (MinIO)
+│
+├── notebooks/                  # Chứa Jupyter Notebook để khởi tạo môi trường
+│   └── create_iceberg_tables.ipynb  # Notebook tạo các bảng Iceberg
+│
+├── spark/                      # Thư mục quản lý Spark
+│   ├── jars/                   # Thư mục chứa các driver JAR (MSSQL JDBC, AWS Bundle, Hadoop AWS)
+│   └── scripts/                # Thư mục chứa các script xử lý PySpark (minio_loader, bronze_to_silver_transformer,...)
+│
+└── conf/                       # Thư mục cấu hình hệ thống
+    └── spark-defaults.conf     # File cấu hình mặc định cho Spark Iceberg
 ```
 
 ## Hướng Dẫn Khởi Tạo Và Sinh Dữ Liệu
@@ -59,7 +70,15 @@ pip install -r requirements.txt
 
 
 ### 3. Chạy hạ tầng bằng Docker
-Khởi động toàn bộ các service hạ tầng (SQL Server, Kafka, Kafka UI) bằng Docker Compose:
+Khởi động toàn bộ các dịch vụ hạ tầng bằng Docker Compose:
+- **SQL Server (mssql)**: Lưu trữ dữ liệu giao dịch ban đầu.
+- **Apache Kafka (kafka)**: Hệ thống hàng đợi tin nhắn thu thập log CDC.
+- **Kafka UI (kafka-ui)**: Giao diện trực quan để theo dõi Kafka topic, consumer group.
+- **Debezium (debezium)**: Kafka Connect source connector chụp các thay đổi dữ liệu từ SQL Server.
+- **MinIO (minio)**: S3 compatible Object Storage làm Data Lake lưu trữ file Parquet.
+- **Schema Registry (schema-registry)**: Quản lý và lưu trữ schema định dạng Avro.
+- **Iceberg REST Catalog (rest)**: REST Catalog quản lý metadata cho Apache Iceberg.
+- **Spark Iceberg (spark-iceberg)**: Môi trường chạy PySpark & Jupyter Notebook để tương tác và ETL dữ liệu.
 
 ```bash
 # Khởi động các dịch vụ
@@ -127,4 +146,58 @@ Danh sách các kịch bản hợp lệ (`<tên_kịch_bản>`):
 * Chạy kịch bản thanh toán 3 lần:
   ```bash
   python3 datagen_app/main_simulator.py make_payment 3
+  ```
+
+---
+
+## Hướng Dẫn Vận Hành Hệ Thống
+
+Dưới đây là các bước chi tiết để cấu hình connector, khởi tạo Data Lake và chạy ETL chuyển đổi dữ liệu.
+
+### 1. Đăng ký Source Connector
+Đăng ký Debezium Source Connector để bắt đầu lắng nghe sự thay đổi (CDC) từ SQL Server và đẩy vào Kafka. Tham khảo chi tiết tại [connectors/README.md].
+```bash
+curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @connectors/debezium-source.json
+```
+
+### 2. Tạo Bucket trên MinIO
+- Truy cập vào MinIO Web UI tại địa chỉ: http://localhost:9001.
+- Vào phần **Buckets** -> Nhấp vào **Create Bucket** -> Đặt tên bucket là `datalake`
+
+### 3. Đăng ký Sink Connector
+Sau khi đã tạo bucket trên MinIO, tiến hành đăng ký MinIO Sink Connector để đẩy dữ liệu từ Kafka xuống Data Lake:
+```bash
+curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @connectors/minio-sink.json
+```
+
+### 4. Tạo các bảng Iceberg
+- Truy cập Jupyter Notebook tại địa chỉ: http://localhost:8888.
+- Tìm đến notebook [notebooks/create_iceberg_tables.ipynb] và chạy toàn bộ các cells để khởi tạo database và các bảng Iceberg.
+
+### 5. Tải Drivers JAR & Đợi đồng bộ dữ liệu
+- Chờ cho dữ liệu CDC được đồng bộ hoàn toàn từ Kafka xuống bucket `datalake` dưới dạng file Parquet.
+- Cài đặt driver JAR cần thiết cho Spark (nếu chưa chạy trước đó):
+  ```bash
+  chmod +x download_jars.sh
+  ./download_jars.sh
+  ```
+
+### 6. Chạy các lệnh nạp dữ liệu vào bảng Iceberg
+Dùng Spark-submit để chạy các script ETL trong Spark container (xem thêm trong [spark/README.md]):
+- **Nạp dữ liệu từ MinIO vào tầng Bronze:**
+  ```bash
+  docker compose exec spark-iceberg /opt/spark/bin/spark-submit \
+    --jars /home/iceberg/pyspark/jars/hadoop-aws-3.3.4.jar,/home/iceberg/pyspark/jars/aws-java-sdk-bundle-1.12.262.jar \
+    /home/iceberg/pyspark/scripts/minio_loader.py
+  ```
+- **Chuẩn hóa và Merge dữ liệu từ tầng Bronze lên tầng Silver:**
+  ```bash
+  docker compose exec spark-iceberg /opt/spark/bin/spark-submit \
+    /home/iceberg/pyspark/scripts/bronze_to_silver_transformer.py
+  ```
+- *(Tùy chọn) Đối chiếu dữ liệu giữa SQL Server Source và Silver Iceberg:*
+  ```bash
+  docker compose exec spark-iceberg /opt/spark/bin/spark-submit \
+    --jars /home/iceberg/pyspark/jars/mssql-jdbc-12.4.2.jre11.jar,/home/iceberg/pyspark/jars/hadoop-aws-3.3.4.jar,/home/iceberg/pyspark/jars/aws-java-sdk-bundle-1.12.262.jar \
+    /home/iceberg/pyspark/scripts/data_reconciliation.py
   ```

@@ -34,3 +34,9 @@ Thumbs.db
 
 # Docker (Optional ignore local volumes or overrides if any)
 docker-compose.override.yml
+
+# Reports
+reports/
+
+# Plugin
+*.jar
