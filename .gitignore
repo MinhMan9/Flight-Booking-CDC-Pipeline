@@ -40,3 +40,7 @@ reports/
 
 # Plugin
 *.jar
+
+# Superset
+superset_db_data/
+superset_home/
