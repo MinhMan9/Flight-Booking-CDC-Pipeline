@@ -24,12 +24,12 @@ scrape_configs:
     static_configs:
       - targets: ['minio:9000']
 
-  # 5. cAdvisor (Docker RAM/CPU)
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['cadvisor:8080']
-
-  # 6. Node-exporter
+  # 5. Node-exporter
   - job_name: 'node-exporter'
     static_configs:
     - targets: ['node-exporter:9100']
+
+  # 6. Kafka Exporter (Consumer Lag & Offset)
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
