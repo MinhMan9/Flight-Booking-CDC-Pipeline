@@ -2,8 +2,8 @@
 
 set -e
 
-# Ensure spark/jars directory exists
-mkdir -p ./spark/jars
+# Ensure spark/jars and monitoring directories exist
+mkdir -p ./spark/jars ./monitoring
 
 # 1. hadoop-aws-3.3.4.jar
 if [ ! -f ./spark/jars/hadoop-aws-3.3.4.jar ]; then
@@ -27,4 +27,12 @@ if [ ! -f ./spark/jars/mssql-jdbc-12.4.2.jre11.jar ]; then
   curl -L -o ./spark/jars/mssql-jdbc-12.4.2.jre11.jar https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.4.2.jre11/mssql-jdbc-12.4.2.jre11.jar
 else
   echo "mssql-jdbc jar already exists. Skipping download."
+fi
+
+# 4. jmx_prometheus_javaagent-0.19.0.jar
+if [ ! -f ./monitoring/jmx_prometheus_javaagent-0.19.0.jar ]; then
+  echo "Downloading jmx_prometheus_javaagent jar..."
+  curl -L -o ./monitoring/jmx_prometheus_javaagent-0.19.0.jar https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.19.0/jmx_prometheus_javaagent-0.19.0.jar
+else
+  echo "jmx_prometheus_javaagent jar already exists. Skipping download."
 fi

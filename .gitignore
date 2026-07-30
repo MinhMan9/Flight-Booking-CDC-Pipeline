@@ -44,3 +44,10 @@ reports/
 # Superset
 superset_db_data/
 superset_home/
+
+
+# Grafana
+grafana_data/
+
+# Prometheus
+prometheus_data/
