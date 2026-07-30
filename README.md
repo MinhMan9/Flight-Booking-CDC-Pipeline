@@ -195,6 +195,11 @@ Dùng Spark-submit để chạy các script ETL trong Spark container (xem thêm
   docker compose exec spark-iceberg /opt/spark/bin/spark-submit \
     /home/iceberg/pyspark/scripts/bronze_to_silver_transformer.py
   ```
+- **Tổng hợp và nạp dữ liệu từ tầng Silver lên tầng Gold:**
+  ```bash
+  docker compose exec spark-iceberg /opt/spark/bin/spark-submit \
+    /home/iceberg/pyspark/scripts/silver_to_gold_transformer.py
+  ```
 - *(Tùy chọn) Đối chiếu dữ liệu giữa SQL Server Source và Silver Iceberg:*
   ```bash
   docker compose exec spark-iceberg /opt/spark/bin/spark-submit \
