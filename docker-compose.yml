@@ -47,13 +47,13 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_LOG_DIRS: '/var/lib/kafka/data'
 
-      KAFKA_OPTS: '-javaagent:/kafka/jmx_prometheus_javaagent.jar=9405:/kafka/kafka-broker-config.yml'
+      KAFKA_OPTS: '-javaagent:/kafka/jmx_prometheus_javaagent.jar=9405:/kafka/kafka-exporter-config.yml'
     networks:
       - cdc_network
     volumes:
       - kafka_data:/var/lib/kafka/data
       - ./monitoring/jmx_prometheus_javaagent-0.19.0.jar:/kafka/jmx_prometheus_javaagent.jar
-      - ./monitoring/kafka-broker-config.yml:/kafka/kafka-broker-config.yml
+      - ./monitoring/kafka-exporter-config.yml:/kafka/kafka-exporter-config.yml
 
   # ==========================================
   # 3. KAFKA UI
@@ -92,11 +92,11 @@ services:
 
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-      - KAFKA_OPTS=-javaagent:/kafka/jmx_prometheus_javaagent.jar=9404:/kafka/jmx-exporter-config.yml
+      - KAFKA_OPTS=-javaagent:/kafka/jmx_prometheus_javaagent.jar=9404:/kafka/debezium-exporter-config.yml
     volumes:
       - debezium_plugins:/kafka/connect
       - ./monitoring/jmx_prometheus_javaagent-0.19.0.jar:/kafka/jmx_prometheus_javaagent.jar
-      - ./monitoring/jmx-exporter-config.yml:/kafka/jmx-exporter-config.yml
+      - ./monitoring/debezium-exporter-config.yml:/kafka/debezium-exporter-config.yml
     networks:
       - cdc_network
 
@@ -218,6 +218,9 @@ services:
       - GF_EVIRONMENT_ADMIN_PASSWORD=admin
     volumes:
       - ./monitoring/grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/kafka-dashboard.json:/var/lib/grafana/dashboards/kafka-dashboard.json
+      - ./monitoring/debezium-dashboard.json:/var/lib/grafana/dashboards/debezium-dashboard.json
     depends_on:
       - prometheus
     networks:
@@ -231,6 +234,20 @@ services:
     container_name: node-exporter
     ports:
       - "9100:9100"
+    networks:
+      - cdc_network
+
+  # ==========================================
+  # 12. Kafka Exporter (Consumer Lag & Offset)
+  # ==========================================
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: kafka-exporter
+    command: ["--kafka.server=kafka:29092"]
+    ports:
+      - "9308:9308"
+    depends_on:
+      - kafka
     networks:
       - cdc_network
   # ==========================================
