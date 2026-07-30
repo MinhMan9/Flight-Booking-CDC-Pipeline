@@ -198,7 +198,7 @@ services:
     volumes:
       - ./trino/etc/catalog:/etc/trino/catalog
     ports:
-      - '9090:8080'
+      - '9091:8080'
     networks:
       - cdc_network
 
@@ -272,8 +272,8 @@ services:
     volumes:
       - ./monitoring/grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - ./monitoring/kafka-dashboard.json:/var/lib/grafana/dashboards/kafka-dashboard.json
-      - ./monitoring/debezium-dashboard.json:/var/lib/grafana/dashboards/debezium-dashboard.json
+      - ./monitoring/kafka-dashboard.json:/etc/grafana/dashboards/kafka-dashboard.json
+      - ./monitoring/debezium-dashboard.json:/etc/grafana/dashboards/debezium-dashboard.json
     depends_on:
       - prometheus
     networks:
