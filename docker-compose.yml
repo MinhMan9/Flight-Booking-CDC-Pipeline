@@ -177,6 +177,59 @@ services:
       - "10001:10001"
     networks:
       - cdc_network
+
+  # ==========================================
+  # 9. TRINO
+  # ==========================================
+  trino:
+    image: 'trinodb/trino'
+    hostname: trino
+    container_name: trino
+    volumes:
+      - ./trino/etc/catalog:/etc/trino/catalog
+    ports:
+      - '9090:8080'
+    networks:
+      - cdc_network
+
+  # ==========================================
+  # 10. SUPERSET
+  # ==========================================
+  superset:
+    build: ./superset
+    container_name: superset
+    environment:
+      - SUPERSET_SECRET_KEY=mysecretkey
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin
+      - ADMIN_FIRST_NAME=Superset
+      - ADMIN_LAST_NAME=Admin
+      - ADMIN_EMAIL=admin@example.com
+      - DATABASE_URL=postgresql+psycopg2://superset:superset@superset-db:5432/superset
+    depends_on:
+      - superset-db
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./superset/superset_home:/app/superset_home
+    networks:
+      - cdc_network
+    command: >
+      /bin/sh -c " superset db upgrade && superset fab create-admin --username admin --firstname Superset --lastname Admin --email admin@example.com --password admin || true && superset init && superset run -h 0.0.0.0 -p 8088 "
+  # ==========================================
+  # 11. SUPERSET DATABASE
+  # ==========================================
+  superset-db:
+    image: postgres:15
+    container_name: superset-db
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+    volumes:
+      - ./superset/superset_db_data:/var/lib/postgresql/data
+    networks:
+      - cdc_network
   # ==========================================
   # KHAI BÁO MẠNG VÀ Ổ CỨNG ÁNH XẠ
   # ==========================================
