@@ -1,6 +1,9 @@
 # Flight-Booking-CDC-Pipeline
 [Intern] CDC Pipeline Project
 
+![Pipeline Architecture](images/architecture.png)
+
+
 ## Cấu trúc thư mục
 ```
 flight-booking-cdc-pipeline/
