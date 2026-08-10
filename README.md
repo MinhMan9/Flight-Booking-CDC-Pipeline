@@ -9,7 +9,7 @@
 flight-booking-cdc-pipeline/
 │
 ├── docker-compose.yml          # File khởi tạo toàn bộ hạ tầng (Kafka, SQL Server, Kafka UI, MinIO, Spark, Iceberg REST,...)
-├── .env                        # Chứa các biến môi trường cấu hình hệ thống
+├── .env.example                # Hướng dẫn các biến môi trường cấu hình hệ thống
 ├── requirements.txt            # Danh sách thư viện Python cần cài đặt (faker, pyodbc,...)
 ├── README.md                   # Tài liệu hướng dẫn cách chạy dự án
 ├── download_jars.sh            # Script bash tải các file jar phục vụ Spark
@@ -69,7 +69,7 @@ pip install -r requirements.txt
 
 
 ### 2. Thiết lập cấu hình kết nối (.env)
-Đảm bảo bạn đã cấu hình tệp `.env` ở thư mục gốc của dự án chứa mật khẩu SQL Server phù hợp, có ví dụ trong file `.env.example`:
+Đảm bảo bạn đã cấu hình tệp `.env` ở thư mục gốc của dự án chứa các cấu hình phù hợp, có ví dụ trong file `.env.example`:
 
 
 ### 3. Chạy hạ tầng bằng Docker
