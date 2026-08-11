@@ -107,8 +107,8 @@ services:
     image: minio/minio:latest
     container_name: minio
     ports:
-      - "9000:9000" # Cổng API để Kafka Connect đẩy dữ liệu vào
-      - "9001:9001" # Cổng Web UI để bạn vào xem dữ liệu
+      - "9000:9000" # API Port for Kafka Connect sink data
+      - "9001:9001" # Web UI Port for viewing data
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
@@ -304,7 +304,7 @@ services:
     networks:
       - cdc_network
   # ==========================================
-  # KHAI BÁO MẠNG VÀ Ổ CỨNG ÁNH XẠ
+  # NETWORKS AND VOLUMES MAPPING
   # ==========================================
 networks:
   cdc_network:

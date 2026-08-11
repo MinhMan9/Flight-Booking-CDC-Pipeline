@@ -7,11 +7,11 @@ from datetime import datetime, timedelta
 from faker import Faker
 from db_connection import get_db_connection
 
-# Khởi tạo Faker tiếng Việt
+# Initialize Vietnamese Faker
 fake = Faker('vi_VN')
 
 # ==========================================
-# 1. KHAI BÁO MIỀN DỮ LIỆU (DOMAIN VALUES)
+# 1. DOMAIN VALUES DECLARATION
 # ==========================================
 CHANNELS = ['WEB', 'APP', 'AGENCY', 'TICKET_OFFICE', 'CALL_CENTER']
 AIRPORTS = ['SGN', 'HAN', 'DAD', 'CXR', 'PQC', 'VCA', 'HUI', 'VDO']
@@ -44,15 +44,15 @@ def generate_ticket_number():
             return ticket_no
 
 # ==========================================
-# 2. HÀM CHẠY LOGIC SINH DỮ LIỆU CHÍNH
+# 2. MAIN DATA GENERATION LOGIC
 # ==========================================
 def simulate_booking_transaction(cursor, count):
-    # Thời gian giả lập
+    # Simulated time
     created_at = fake.date_time_between(start_date='-30d', end_date='now')
     updated_at = created_at + timedelta(minutes=random.randint(5, 120))
     flight_date = (created_at + timedelta(days=random.randint(3, 90))).strftime('%Y-%m-%d')
     
-    # 1. TẠO PNR
+    # 1. CREATE PNR
     pnr_id = generate_pnr()
     channel = random.choices(CHANNELS, weights=[40, 30, 20, 5, 5], k=1)[0]
     
@@ -61,38 +61,38 @@ def simulate_booking_transaction(cursor, count):
         VALUES (?, ?, 'CREATED', ?, ?)
     """, (pnr_id, channel, created_at, created_at))
 
-    # 2. GHI NHẬN SỰ KIỆN: CREATED
+    # 2. RECORD EVENT: CREATED
     cursor.execute("""
         INSERT INTO booking_events (pnr_id, event_type, created_at)
         VALUES (?, 'CREATED', ?)
     """, (pnr_id, created_at))
 
-    # 3. TẠO HÀNH KHÁCH (1 đến 3 người)
+    # 3. CREATE PASSENGERS (1 to 3 people)
     num_passengers = random.randint(1, 3)
     passenger_ids = []
     
     for _ in range(num_passengers):
-        # Dùng gender ngẫu nhiên để lấy đúng tên tiếng việt
+        # Use random gender to get correct Vietnamese name
         gender = random.choice(['male', 'female'])
         fname = fake.first_name_male() if gender == 'male' else fake.first_name_female()
         lname = fake.last_name()
         
-        # Xóa dấu tiếng Việt và tạo email từ tên
+        # Remove Vietnamese accents and create email from name
         clean_fname = unicodedata.normalize('NFKD', fname).encode('ASCII', 'ignore').decode('utf-8').lower().replace(' ', '')
         clean_lname = unicodedata.normalize('NFKD', lname).encode('ASCII', 'ignore').decode('utf-8').lower().replace(' ', '')
         
-        # Đa dạng hóa các kiểu đặt tên email của người dùng thật
+        # Diversify email formats of real users
         email_formats = [
             f"{clean_fname}.{clean_lname}{random.randint(1, 999)}",
             f"{clean_lname}{clean_fname}{random.randint(1, 99)}",
-            f"{clean_fname}_{random.randint(1970, 2005)}", # giống kiểu đặt năm sinh
+            f"{clean_fname}_{random.randint(1970, 2005)}", # similar to birth year format
             f"{clean_fname}{clean_lname[0]}{random.randint(10, 99)}" 
         ]
         email = f"{random.choice(email_formats)}@{fake.free_email_domain()}"
         
         passport = fake.bothify(text=random.choice(['C#######', '############']))
         
-        # Dùng OUTPUT INSERTED để lấy ID tự tăng vừa được tạo
+        # Use OUTPUT INSERTED to get newly created identity ID
         cursor.execute("""
             INSERT INTO passengers (pnr_id, first_name, last_name, email, passport_number, created_at, updated_at)
             OUTPUT INSERTED.passenger_id
@@ -102,32 +102,32 @@ def simulate_booking_transaction(cursor, count):
         passenger_id = cursor.fetchone()[0]
         passenger_ids.append(passenger_id)
 
-    # 4. TẠO CHẶNG BAY (1 chiều hoặc Khứ hồi)
+    # 4. CREATE FLIGHT SEGMENTS (one-way or round-trip)
     num_segments = random.choices([1, 2], weights=[70, 30], k=1)[0]
     route = random.sample(AIRPORTS, 2)
     airline = random.choice(AIRLINES)
     
-    # Chiều đi
+    # Outbound flight
     cursor.execute("""
         INSERT INTO flight_segments (pnr_id, origin_airport, dest_airport, flight_date, airline_code, flight_number, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (pnr_id, route[0], route[1], flight_date, airline, str(random.randint(10, 9999)), created_at, created_at))
     
-    if num_segments == 2: # Chiều về
+    if num_segments == 2: # Inbound flight
         return_date = (datetime.strptime(flight_date, '%Y-%m-%d') + timedelta(days=random.randint(2, 10))).strftime('%Y-%m-%d')
         cursor.execute("""
             INSERT INTO flight_segments (pnr_id, origin_airport, dest_airport, flight_date, airline_code, flight_number, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (pnr_id, route[1], route[0], return_date, airline, str(random.randint(10, 9999)), created_at, created_at))
 
-    # 5. LOGIC THANH TOÁN & XUẤT VÉ (80% thanh toán thành công)
+    # 5. PAYMENT & TICKETING LOGIC (80% success rate)
     is_ticketed = random.random() < 0.8
     
     payment_id = generate_payment_id()
     pay_method = random.choice(PAYMENT_METHODS)
     fare_class = random.choices(['Y', 'W', 'J', 'F'], weights=[60, 20, 15, 5], k=1)[0]
     
-    # Logic tính giá tiền base trên Fare Class đúng với báo cáo
+    # Fare Class price logic matching reporting
     if fare_class == 'Y':
         base_amount = random.uniform(1500000, 5000000)
     elif fare_class == 'W':
@@ -140,19 +140,19 @@ def simulate_booking_transaction(cursor, count):
     total_amount = round(base_amount * num_passengers * num_segments, 2)
 
     if is_ticketed:
-        # Cập nhật trạng thái PNR thành TICKETED
+        # Update PNR status to TICKETED
         cursor.execute("UPDATE pnr_records SET booking_status = 'TICKETED', updated_at = ? WHERE pnr_id = ?", (updated_at, pnr_id))
         
-        # Thêm sự kiện TICKETED
+        # Add TICKETED event
         cursor.execute("INSERT INTO booking_events (pnr_id, event_type, created_at) VALUES (?, 'TICKETED', ?)", (pnr_id, updated_at))
         
-        # Tạo thanh toán thành công
+        # Create successful payment
         cursor.execute("""
             INSERT INTO payments (payment_id, pnr_id, payment_method, amount, currency, payment_status, created_at, updated_at)
             VALUES (?, ?, ?, ?, 'VND', 'SUCCESS', ?, ?)
         """, (payment_id, pnr_id, pay_method, total_amount, updated_at, updated_at))
 
-        # Phát hành vé cho từng khách
+        # Issue ticket for each passenger
         for pid in passenger_ids:
             ticket_no = generate_ticket_number()
             cursor.execute("""
@@ -161,25 +161,25 @@ def simulate_booking_transaction(cursor, count):
             """, (ticket_no, pid, fare_class, updated_at, updated_at))
             
     else:
-        # Cập nhật trạng thái PNR thành CANCELLED
+        # Update PNR status to CANCELLED
         cursor.execute("UPDATE pnr_records SET booking_status = 'CANCELLED', updated_at = ? WHERE pnr_id = ?", (updated_at, pnr_id))
         
-        # Thêm sự kiện CANCELLED
+        # Add CANCELLED event
         cursor.execute("INSERT INTO booking_events (pnr_id, event_type, created_at) VALUES (?, 'CANCELLED', ?)", (pnr_id, updated_at))
         
-        # Tạo thanh toán thất bại
+        # Create failed payment
         cursor.execute("""
             INSERT INTO payments (payment_id, pnr_id, payment_method, amount, currency, payment_status, created_at, updated_at)
             VALUES (?, ?, ?, ?, 'VND', 'FAILED', ?, ?)
         """, (payment_id, pnr_id, pay_method, total_amount, updated_at, updated_at))
             
-    print(f"[{count}/100000] Đã sinh thành công PNR: {pnr_id} - Khách: {num_passengers} - Chặng: {num_segments} - Trạng thái: {'TICKETED' if is_ticketed else 'CANCELLED'}")
+    print(f"[{count}/100000] Successfully generated PNR: {pnr_id} - Passengers: {num_passengers} - Segments: {num_segments} - Status: {'TICKETED' if is_ticketed else 'CANCELLED'}")
 
 # ==========================================
-# 3. CHẠY VÒNG LẶP LIÊN TỤC (CDC TRIGGER)
+# 3. RUN CONTINUOUS LOOP (CDC TRIGGER)
 # ==========================================
 if __name__ == "__main__":
-    print("🚀 Khởi động luồng sinh dữ liệu Flight Booking CDC...")
+    print("Starting Flight Booking CDC data generation flow...")
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -187,16 +187,16 @@ if __name__ == "__main__":
         total_records = 100000
         count = 0
         
-        # Vòng lặp sinh 100,000 records
+        # Loop to generate 100,000 records
         while count < total_records:
             count += 1
             simulate_booking_transaction(cursor, count)
-            conn.commit() # Lưu vào database
+            conn.commit() # Commit to database
             
-        print(f"Đã sinh thành công đầy đủ {total_records} records!")
+        print(f"Successfully generated all {total_records} records!")
             
     except Exception as e:
-        print(f"❌ Lỗi: {e}")
+        print(f"Error: {e}")
     finally:
         if 'conn' in locals():
             conn.close()

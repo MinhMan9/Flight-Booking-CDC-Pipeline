@@ -1,16 +1,16 @@
 -- =======================================================================
 -- FILE: init_schema.sql
--- DESCRIPTION: Tạo lược đồ cơ sở dữ liệu cho Flight Booking PNR System
+-- DESCRIPTION: Create database schema for Flight Booking PNR System
 -- =======================================================================
 
--- (Tùy chọn) Tạo Database nếu chưa có
+-- (Optional) Create Database
 CREATE DATABASE FlightBookingCDC;
 GO
 USE FlightBookingCDC;
 GO
 
 -- -----------------------------------------------------------------------
--- 1. TẠO BẢNG GỐC: pnr_records
+-- 1. pnr_records
 -- -----------------------------------------------------------------------
 CREATE TABLE pnr_records (
     pnr_id VARCHAR(6) PRIMARY KEY,
@@ -23,10 +23,10 @@ CREATE TABLE pnr_records (
 GO
 
 -- -----------------------------------------------------------------------
--- 2. TẠO CÁC BẢNG CON TRỰC TIẾP CỦA PNR
+-- 2. 
 -- -----------------------------------------------------------------------
 
--- Bảng Hành khách
+-- Passenger table
 CREATE TABLE passengers (
     passenger_id INT IDENTITY(1,1) PRIMARY KEY,
     pnr_id VARCHAR(6) NOT NULL FOREIGN KEY REFERENCES pnr_records(pnr_id),
@@ -39,7 +39,7 @@ CREATE TABLE passengers (
 );
 GO
 
--- Bảng Chặng bay
+-- Flight segment table
 CREATE TABLE flight_segments (
     segment_id INT IDENTITY(1,1) PRIMARY KEY,
     pnr_id VARCHAR(6) NOT NULL FOREIGN KEY REFERENCES pnr_records(pnr_id),
@@ -53,7 +53,7 @@ CREATE TABLE flight_segments (
 );
 GO
 
--- Bảng Thanh toán
+-- Payment table
 CREATE TABLE payments (
     payment_id VARCHAR(50) PRIMARY KEY,
     pnr_id VARCHAR(6) NOT NULL FOREIGN KEY REFERENCES pnr_records(pnr_id),
@@ -68,7 +68,7 @@ CREATE TABLE payments (
 );
 GO
 
--- Bảng Lịch sử Sự kiện (Dành riêng cho CDC Tracking)
+-- Booking event table
 CREATE TABLE booking_events (
     event_id INT IDENTITY(1,1) PRIMARY KEY,
     pnr_id VARCHAR(6) NOT NULL FOREIGN KEY REFERENCES pnr_records(pnr_id),
@@ -79,10 +79,10 @@ CREATE TABLE booking_events (
 GO
 
 -- -----------------------------------------------------------------------
--- 3. TẠO BẢNG CHÁU (Phụ thuộc vào Hành khách)
+-- 3.
 -- -----------------------------------------------------------------------
 
--- Bảng Vé máy bay (1 khách có đúng 1 vé)
+-- Ticket table (1 passenger - 1 ticket)
 CREATE TABLE tickets (
     ticket_number VARCHAR(20) PRIMARY KEY,
     passenger_id INT NOT NULL UNIQUE FOREIGN KEY REFERENCES passengers(passenger_id),

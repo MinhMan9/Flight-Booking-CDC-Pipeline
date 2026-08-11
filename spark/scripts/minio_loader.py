@@ -4,10 +4,10 @@ from datetime import datetime
 from pyspark.sql import SparkSession
 
 def create_spark_session(run_date):
-    """Khởi tạo Spark Session với cấu hình nạp từ spark-defaults.conf inside Docker container."""
+    """Initialize Spark Session with configurations loaded from spark-defaults.conf inside Docker container."""
     builder = SparkSession.builder.appName(f"FlightBooking_Minio_Loader_{run_date}")
     
-    # Cấu hình Iceberg được nạp tự động qua spark-defaults.conf của Spark trong Docker
+    # Iceberg configurations are loaded automatically via spark-defaults.conf of Spark in Docker
     spark = builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
     return spark
@@ -16,45 +16,45 @@ def create_spark_session(run_date):
 def main():
 
     
-    # Cấu hình để có thể truyền tham số ngày từ dòng lệnh (mặc định là ngày hiện tại)
+    # Configure to pass date parameter from command line (default to current date)
     parser = argparse.ArgumentParser(description="MinIO to Bronze Loader")
     parser.add_argument(
         "--date", 
         type=str, 
-        help="Ngày cần nạp dữ liệu (Định dạng: YYYY-MM-DD)", 
+        help="Date to load data (Format: YYYY-MM-DD)", 
         default=datetime.now().strftime("%Y-%m-%d")
     )
     args = parser.parse_args()
     
     run_date = args.date
 
-    # Khởi tạo Spark Session
+    # Initialize Spark Session
     spark = create_spark_session(run_date)
 
-    print(f"Bắt đầu tiến trình nạp dữ liệu MinIO to Iceberg Bronze cho ngày: {run_date}")
+    print(f"Starting MinIO to Iceberg Bronze data load process for date: {run_date}")
 
     tables = ["pnr_records", "passengers", "flight_segments", "tickets", "payments", "booking_events"]
 
 
     for table in tables:
-        # Cập nhật đường dẫn chỉ đọc thư mục của đúng event_date được yêu cầu
+        # Update path to only read directory of the requested event_date
         topic_path = f"s3a://datalake/topics/FlightBookingCDC.dbo.{table}/event_date={run_date}/"
         bronze_table = f"demo.bronze.{table}"
         
-        print(f"\nĐang đọc dữ liệu từ đường dẫn: {topic_path}")
+        print(f"\nReading data from path: {topic_path}")
         try:
-            # Đọc dữ liệu thô dạng parquet từ topic
+            # Read raw parquet data from topic
             raw_df = spark.read.parquet(topic_path)
             
-            # Ghi nối tiếp (mode append) vào bảng Bronze Iceberg tương ứng
+            # Append data to the corresponding Bronze Iceberg table
             raw_df.write.format("iceberg").mode("append").saveAsTable(bronze_table)
-            print(f"\033[92m✅ Đã ghi dữ liệu thành công vào bảng Bronze Iceberg: {bronze_table}\033[0m")
+            print(f"\033[92mSuccessfully wrote data to Bronze Iceberg table: {bronze_table}\033[0m")
             
         except Exception as e:
-            # Nếu trong ngày không có dữ liệu, Spark sẽ quăng lỗi Path does not exist
-            print(f"\033[91m❌ Không thể nạp dữ liệu bảng {table} cho ngày {run_date}. Chi tiết lỗi: {str(e)[:100]}...\033[0m")
+            # If there is no data for the day, Spark will throw a Path does not exist error
+            print(f"\033[91mFailed to load data for table {table} on date {run_date}. Error details: {str(e)[:100]}...\033[0m")
 
-    print("\n\033[92m✅ Hoàn thành tiến trình nạp dữ liệu từ MinIO vào tầng Bronze!\033[0m")
+    print("\n\033[92mCompleted data ingestion from MinIO to Bronze layer!\033[0m")
 
 
 if __name__ == "__main__":
