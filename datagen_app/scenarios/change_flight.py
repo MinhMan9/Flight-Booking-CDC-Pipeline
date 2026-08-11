@@ -1,7 +1,7 @@
 import random
 from datetime import datetime, timedelta
 
-# Mã màu ANSI
+# ANSI color codes
 CREATE_COLOR = "\033[42;37m"
 UPDATE_COLOR = "\033[43;30m"
 DELETE_COLOR = "\033[41;37m"
@@ -9,9 +9,9 @@ RESET_COLOR = "\033[0m"
 
 def run(cursor, fake):
     """
-    Thực hiện thay đổi chuyến bay: dời ngày bay ngẫu nhiên từ 1 đến 3 ngày.
+    Execute flight change: shift flight date randomly by 1 to 3 days.
     """
-    # Lấy ngẫu nhiên một PNR chưa bị hủy hoặc hoàn tiền
+    # Get a random PNR that is not cancelled or refunded
     cursor.execute("""
         SELECT TOP 1 pnr_id, updated_at 
         FROM pnr_records 
@@ -21,23 +21,23 @@ def run(cursor, fake):
     row = cursor.fetchone()
     
     if not row:
-        print(f"{UPDATE_COLOR} UPDATE NOT FOUND {RESET_COLOR} Không tìm thấy PNR nào phù hợp để thay đổi chuyến bay.")
+        print(f"{UPDATE_COLOR} UPDATE NOT FOUND {RESET_COLOR} No suitable PNR found to change flight.")
         return
         
     pnr_id, last_updated_at = row
     
-    # Tính thời điểm cập nhật mới (sau lần cập nhật trước đó từ 1-5 ngày)
+    # Calculate new update time (1-5 days after the previous update)
     new_updated_at = last_updated_at + timedelta(days=random.randint(1, 5), minutes=random.randint(10, 300))
     
-    # Dời ngày bay từ 1 đến 3 ngày
+    # Shift flight date by 1 to 3 days
     days_to_shift = random.randint(1, 3)
     
-    # Lấy danh sách các chặng bay của PNR này
+    # Get list of flight segments for this PNR
     cursor.execute("SELECT segment_id, flight_date FROM flight_segments WHERE pnr_id = ?", (pnr_id,))
     segments = cursor.fetchall()
     
     for segment_id, flight_date in segments:
-        # Xử lý kiểu dữ liệu của flight_date (chuỗi hoặc object date)
+        # Handle data type of flight_date (string or date object)
         if isinstance(flight_date, str):
             current_date = datetime.strptime(flight_date, '%Y-%m-%d').date()
         else:
@@ -46,7 +46,7 @@ def run(cursor, fake):
         new_flight_date = current_date + timedelta(days=days_to_shift)
         new_flight_date_str = new_flight_date.strftime('%Y-%m-%d')
         
-        # Cập nhật chặng bay
+        # Update flight segment
         cursor.execute("""
             UPDATE flight_segments 
             SET flight_date = ?, updated_at = ? 
@@ -60,10 +60,10 @@ def run(cursor, fake):
         WHERE pnr_id = ?
     """, (new_updated_at, pnr_id))
     
-    # Ghi nhận sự kiện CHANGED
+    # Record CHANGED event
     cursor.execute("""
         INSERT INTO booking_events (pnr_id, event_type, created_at) 
         VALUES (?, 'CHANGED', ?)
     """, (pnr_id, new_updated_at))
     
-    print(f"{CREATE_COLOR} CHANGE FLIGHT {RESET_COLOR} Đã dời lịch bay thêm {days_to_shift} ngày cho PNR: {pnr_id} - Trạng thái mới: CHANGED")
+    print(f"{CREATE_COLOR} CHANGE FLIGHT {RESET_COLOR} Shifted flight schedule by {days_to_shift} days for PNR: {pnr_id} - New status: CHANGED")

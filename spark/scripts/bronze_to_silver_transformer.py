@@ -2,7 +2,7 @@ import sys
 from pyspark.sql import SparkSession
 
 def create_spark_session():
-    """Khởi tạo Spark Session với cấu hình nạp từ spark-defaults.conf inside Docker container."""
+    """Initialize Spark Session with configurations loaded from spark-defaults.conf inside Docker container."""
     builder = SparkSession.builder.appName("FlightBooking_Bronze_to_Silver")
     
     spark = builder.getOrCreate()
@@ -13,8 +13,8 @@ def create_spark_session():
 
 
 def process_pnr_records(spark):
-    print("🔄 Đang xử lý bảng: pnr_records")
-    # Lấy event mới nhất cho mỗi pnr_id từ Bronze (đã là TIMESTAMP)
+    print("Processing table: pnr_records")
+    # Get the latest event for each pnr_id from Bronze
     spark.sql("""
     CREATE OR REPLACE TEMPORARY VIEW pnr_records_normalized AS
     SELECT 
@@ -32,7 +32,7 @@ def process_pnr_records(spark):
     ) WHERE rn = 1
     """)
 
-    # Merge dữ liệu đã chuẩn hóa vào bảng Silver
+    # Merge normalized data into Silver table
     spark.sql("""
     MERGE INTO demo.silver.pnr_records_clean t
     USING pnr_records_normalized s
@@ -46,10 +46,10 @@ def process_pnr_records(spark):
     WHEN NOT MATCHED AND s.__op != 'd' THEN INSERT (pnr_id, booking_channel, booking_status, created_at, updated_at)
     VALUES (s.pnr_id, s.booking_channel, s.booking_status, s.created_at, s.updated_at)
     """)
-    print("\033[92m✅ Đồng bộ pnr_records thành công!\033[0m")
+    print("\033[92mSuccessfully synchronized pnr_records!\033[0m")
 
 def process_passengers(spark):
-    print("🔄 Đang xử lý bảng: passengers")
+    print("Processing table: passengers")
     spark.sql("""
     CREATE OR REPLACE TEMPORARY VIEW passengers_normalized AS
     SELECT 
@@ -86,12 +86,12 @@ def process_passengers(spark):
     WHEN NOT MATCHED AND s.__op != 'd' THEN INSERT (passenger_id, pnr_id, first_name, last_name, email, passport_number, created_at, updated_at)
     VALUES (s.passenger_id, s.pnr_id, s.first_name, s.last_name, s.email, s.passport_number, s.created_at, s.updated_at)
     """)
-    print("\033[92m✅ Đồng bộ passengers thành công!\033[0m")
+    print("\033[92mSuccessfully synchronized passengers!\033[0m")
 
 def process_flight_segments(spark):
-    print("🔄 Đang xử lý bảng: flight_segments")
-    # flight_date đã là DATE, created_at/updated_at đã là TIMESTAMP
-    # THÊM ORDER BY flight_date để tối ưu hóa bộ nhớ khi ghi vào bảng partitioned
+    print("Processing table: flight_segments")
+    # flight_date is already DATE, created_at/updated_at are already TIMESTAMP
+    # Add ORDER BY flight_date to optimize memory when writing to partitioned tables
     spark.sql("""
     CREATE OR REPLACE TEMPORARY VIEW flight_segments_normalized AS
     SELECT 
@@ -131,10 +131,10 @@ def process_flight_segments(spark):
     WHEN NOT MATCHED AND s.__op != 'd' THEN INSERT (segment_id, pnr_id, origin_airport, dest_airport, flight_date, airline_code, flight_number, created_at, updated_at)
     VALUES (s.segment_id, s.pnr_id, s.origin_airport, s.dest_airport, s.flight_date, s.airline_code, s.flight_number, s.created_at, s.updated_at)
     """)
-    print("\033[92m✅ Đồng bộ flight_segments thành công!\033[0m")
+    print("\033[92mSuccessfully synchronized flight_segments!\033[0m")
 
 def process_tickets(spark):
-    print("🔄 Đang xử lý bảng: tickets")
+    print("Processing table: tickets")
     spark.sql("""
     CREATE OR REPLACE TEMPORARY VIEW tickets_normalized AS
     SELECT 
@@ -167,10 +167,10 @@ def process_tickets(spark):
     WHEN NOT MATCHED AND s.__op != 'd' THEN INSERT (ticket_number, passenger_id, fare_class, ticket_status, created_at, updated_at)
     VALUES (s.ticket_number, s.passenger_id, s.fare_class, s.ticket_status, s.created_at, s.updated_at)
     """)
-    print("\033[92m✅ Đồng bộ tickets thành công!\033[0m")
+    print("\033[92mSuccessfully synchronized tickets!\033[0m")
 
 def process_payments(spark):
-    print("🔄 Đang xử lý bảng: payments")
+    print("Processing table: payments")
     spark.sql("""
     CREATE OR REPLACE TEMPORARY VIEW payments_normalized AS
     SELECT 
@@ -207,10 +207,10 @@ def process_payments(spark):
     WHEN NOT MATCHED AND s.__op != 'd' THEN INSERT (payment_id, pnr_id, payment_method, amount, currency, payment_status, created_at, updated_at)
     VALUES (s.payment_id, s.pnr_id, s.payment_method, s.amount, s.currency, s.payment_status, s.created_at, s.updated_at)
     """)
-    print("\033[92m✅ Đồng bộ payments thành công!\033[0m")
+    print("\033[92mSuccessfully synchronized payments!\033[0m")
 
 def process_booking_events(spark):
-    print("🔄 Đang xử lý bảng: booking_events")
+    print("Processing table: booking_events")
     spark.sql("""
     CREATE OR REPLACE TEMPORARY VIEW booking_events_normalized AS
     SELECT 
@@ -239,18 +239,16 @@ def process_booking_events(spark):
     WHEN NOT MATCHED AND s.__op != 'd' THEN INSERT (event_id, pnr_id, event_type, created_at)
     VALUES (s.event_id, s.pnr_id, s.event_type, s.created_at)
     """)
-    print("\033[92m✅ Đồng bộ booking_events thành công!\033[0m")
+    print("\033[92mSuccessfully synchronized booking_events!\033[0m")
 
 def main():
     spark = create_spark_session()
 
-
-
-    # Cấu hình tối ưu bộ nhớ: Giảm shuffle partitions từ 200 mặc định xuống 10
+    # Memory optimization: Reduce shuffle partitions from default 200 to 10
     spark.conf.set("spark.sql.shuffle.partitions", "10")
     spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
 
-    # Bản đồ hàm xử lý
+    # Map of handlers
     handlers = {
         "pnr_records": process_pnr_records,
         "passengers": process_passengers,
@@ -260,31 +258,31 @@ def main():
         "booking_events": process_booking_events
     }
 
-    # Đọc tham số dòng lệnh để xác định bảng cần chạy
+    # Read command line arguments to determine target table
     target_table = sys.argv[1] if len(sys.argv) > 1 else None
 
     if target_table:
         if target_table in handlers:
-            print(f"🚀 Chạy đồng bộ cho riêng bảng: {target_table}")
+            print(f"Running synchronization for table: {target_table}")
             try:
                 handlers[target_table](spark)
             except Exception as e:
-                print(f"\033[91m❌ Thất bại khi đồng bộ {target_table}: {str(e)}\033[0m")
+                print(f"\033[91mFailed to synchronize {target_table}: {str(e)}\033[0m")
                 sys.exit(1)
         else:
-            print(f"\033[91m❌ Tham số bảng '{target_table}' không hợp lệ. Chọn một trong: {list(handlers.keys())}\033[0m")
+            print(f"\033[91mInvalid table argument '{target_table}'. Choose one of: {list(handlers.keys())}\033[0m")
             sys.exit(1)
     else:
-        print("🚀 Chạy đồng bộ tuần tự cho toàn bộ 6 bảng...")
+        print("Running sequential synchronization for all 6 tables...")
         for name, handler in handlers.items():
             try:
                 handler(spark)
             except Exception as e:
-                print(f"\033[91m❌ Thất bại khi đồng bộ {name}: {str(e)}\033[0m")
-                # Tiếp tục chạy bảng tiếp theo bất kể lỗi
+                print(f"\033[91mFailed to synchronize {name}: {str(e)}\033[0m")
+                # Continue to next table regardless of errors
                 continue
 
-    print("\n\033[92m🏁 Hoàn tất đồng bộ tầng Silver!\033[0m")
+    print("\n\033[92mCompleted Silver layer synchronization!\033[0m")
 
 if __name__ == "__main__":
     main()

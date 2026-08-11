@@ -2,17 +2,17 @@ import sys
 from pyspark.sql import SparkSession
 
 def create_spark_session():
-    """Khởi tạo Spark Session với cấu hình mặc định nạp từ spark-defaults.conf inside Docker container."""
+    """Initialize Spark Session with configurations loaded from spark-defaults.conf inside Docker container."""
     builder = SparkSession.builder.appName("FlightBooking_Silver_to_Gold")
     spark = builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
     return spark
 
 def init_gold_tables(spark):
-    """Khởi tạo cấu trúc các bảng tầng Gold (DDL) nếu chưa tồn tại."""
-    print("🔄 Đang khởi tạo DDL các bảng tầng Gold...")
+    """Initialize Gold layer tables DDL if not exists."""
+    print("Initializing Gold layer tables DDL...")
     
-    # 1. Bảng daily_booking_summary
+    # 1. Table daily_booking_summary
     spark.sql("""
     CREATE TABLE IF NOT EXISTS demo.gold.daily_booking_summary (
         booking_date DATE,
@@ -22,7 +22,7 @@ def init_gold_tables(spark):
     PARTITIONED BY (booking_date)
     """)
     
-    # 2. Bảng daily_cancellation_rate
+    # 2. Table daily_cancellation_rate
     spark.sql("""
     CREATE TABLE IF NOT EXISTS demo.gold.daily_cancellation_rate (
         booking_date DATE,
@@ -33,7 +33,7 @@ def init_gold_tables(spark):
     PARTITIONED BY (booking_date)
     """)
     
-    # 3. Bảng revenue_by_route
+    # 3. Table revenue_by_route
     spark.sql("""
     CREATE TABLE IF NOT EXISTS demo.gold.revenue_by_route (
         flight_date DATE,
@@ -45,7 +45,7 @@ def init_gold_tables(spark):
     PARTITIONED BY (flight_date)
     """)
     
-    # 4. Bảng payment_status_summary
+    # 4. Table payment_status_summary
     spark.sql("""
     CREATE TABLE IF NOT EXISTS demo.gold.payment_status_summary (
         payment_date DATE,
@@ -57,10 +57,10 @@ def init_gold_tables(spark):
     PARTITIONED BY (payment_date)
     """)
     
-    print("\033[92m✅ Khởi tạo DDL các bảng tầng Gold hoàn tất!\033[0m")
+    print("\033[92mGold layer tables DDL initialization completed!\033[0m")
 
 def process_daily_booking_summary(spark):
-    print("🔄 Đang tính toán: daily_booking_summary")
+    print("Calculating: daily_booking_summary")
     try:
         spark.sql("""
         INSERT OVERWRITE demo.gold.daily_booking_summary
@@ -71,12 +71,12 @@ def process_daily_booking_summary(spark):
         FROM demo.silver.pnr_records_clean
         GROUP BY CAST(created_at AS DATE), booking_channel
         """)
-        print("\033[92m✅ Tính toán daily_booking_summary thành công!\033[0m")
+        print("\033[92mSuccessfully calculated daily_booking_summary!\033[0m")
     except Exception as e:
-        print(f"\033[91m❌ Lỗi khi tính toán daily_booking_summary: {e}\033[0m")
+        print(f"\033[91mError calculating daily_booking_summary: {e}\033[0m")
 
 def process_daily_cancellation_rate(spark):
-    print("🔄 Đang tính toán: daily_cancellation_rate")
+    print("Calculating: daily_cancellation_rate")
     try:
         spark.sql("""
         INSERT OVERWRITE demo.gold.daily_cancellation_rate
@@ -88,12 +88,12 @@ def process_daily_cancellation_rate(spark):
         FROM demo.silver.pnr_records_clean
         GROUP BY CAST(created_at AS DATE)
         """)
-        print("\033[92m✅ Tính toán daily_cancellation_rate thành công!\033[0m")
+        print("\033[92mSuccessfully calculated daily_cancellation_rate!\033[0m")
     except Exception as e:
-        print(f"\033[91m❌ Lỗi khi tính toán daily_cancellation_rate: {e}\033[0m")
+        print(f"\033[91mError calculating daily_cancellation_rate: {e}\033[0m")
 
 def process_revenue_by_route(spark):
-    print("🔄 Đang tính toán: revenue_by_route")
+    print("Calculating: revenue_by_route")
     try:
         spark.sql("""
         INSERT OVERWRITE demo.gold.revenue_by_route
@@ -130,12 +130,12 @@ def process_revenue_by_route(spark):
         FROM allocated_revenue
         GROUP BY flight_date, origin_airport, dest_airport
         """)
-        print("\033[92m✅ Tính toán revenue_by_route thành công!\033[0m")
+        print("\033[92mSuccessfully calculated revenue_by_route!\033[0m")
     except Exception as e:
-        print(f"\033[91m❌ Lỗi khi tính toán revenue_by_route: {e}\033[0m")
+        print(f"\033[91mError calculating revenue_by_route: {e}\033[0m")
 
 def process_payment_status_summary(spark):
-    print("🔄 Đang tính toán: payment_status_summary")
+    print("Calculating: payment_status_summary")
     try:
         spark.sql("""
         INSERT OVERWRITE demo.gold.payment_status_summary
@@ -148,24 +148,24 @@ def process_payment_status_summary(spark):
         FROM demo.silver.payments_clean
         GROUP BY CAST(created_at AS DATE), payment_method, payment_status
         """)
-        print("\033[92m✅ Tính toán payment_status_summary thành công!\033[0m")
+        print("\033[92mSuccessfully calculated payment_status_summary!\033[0m")
     except Exception as e:
-        print(f"\033[91m❌ Lỗi khi tính toán payment_status_summary: {e}\033[0m")
+        print(f"\033[91mError calculating payment_status_summary: {e}\033[0m")
 
 def main():
     spark = create_spark_session()
     
-    # 1. Khởi tạo cấu trúc các bảng Gold
+    # 1. Initialize Gold tables structure
     init_gold_tables(spark)
     
-    # 2. Xử lý và nạp dữ liệu cho từng bảng
+    # 2. Process and load data for each table
     process_daily_booking_summary(spark)
     process_daily_cancellation_rate(spark)
     process_revenue_by_route(spark)
     process_payment_status_summary(spark)
     
     spark.stop()
-    print("\033[92m Đã hoàn thành toàn bộ tiến trình xử lý Gold Layer (Silver -> Gold)!\033[0m")
+    print("\033[92mCompleted Gold Layer processing (Silver -> Gold)!\033[0m")
 
 if __name__ == "__main__":
     main()

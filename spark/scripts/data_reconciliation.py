@@ -7,16 +7,16 @@ from pyspark.sql import SparkSession
 
 
 class TeeLogger:
-    """Ghi xuất dữ liệu đồng thời ra Terminal và ra File báo cáo dạng text."""
+    """Log data to Terminal and text report file simultaneously."""
     def __init__(self, filepath):
         self.terminal = sys.stdout
         self.log_file = open(filepath, "w", encoding="utf-8")
-        # Regex để loại bỏ các mã escape màu ANSI
+        # Regex to remove ANSI color escape codes
         self.ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
     def write(self, message):
         self.terminal.write(message)
-        # Loại bỏ mã màu ANSI trước khi ghi vào file báo cáo
+        # Remove ANSI color codes before writing to report file
         clean_message = self.ansi_escape.sub('', message)
         self.log_file.write(clean_message)
 
@@ -29,7 +29,7 @@ class TeeLogger:
 
 
 def create_spark_session():
-    """Khởi tạo Spark Session bên trong Docker container."""
+    """Initialize Spark Session inside Docker container."""
     builder = SparkSession.builder.appName("FlightBooking_Data_Validation")
     
     spark = builder.getOrCreate()
@@ -40,13 +40,13 @@ def create_spark_session():
 
 
 def read_sql_server(spark, table_name):
-    """Đọc dữ liệu từ SQL Server, hỗ trợ lấy cấu hình từ environment hoặc .env."""
+    """Read data from SQL Server, supporting configuration from environment or .env."""
     db_server = os.getenv("DB_SERVER", "sql-server:1433").strip().replace(",", ":")
     db_name = os.getenv("DB_NAME", "FlightBookingCDC").strip()
     db_username = os.getenv("DB_USERNAME", "sa").strip()
     db_password = os.getenv("DB_PASSWORD", "Password123!").strip()
     
-    # Nếu chạy ngoài Docker và host là 'sql-server', tự động chuyển thành 'localhost'
+    # If running outside Docker and host is 'sql-server', automatically convert to 'localhost'
     in_docker = os.path.exists('/.dockerenv')
     if not in_docker:
         if db_server.startswith("sql-server"):
@@ -64,10 +64,10 @@ def read_sql_server(spark, table_name):
 
 
 def load_and_register_views(spark):
-    """Nạp dữ liệu từ Source & Target và tạo Temp Views để query SQL cho toàn bộ 6 bảng."""
-    print(" BƯỚC 1: Đang nạp dữ liệu từ SQL Server và Iceberg Lakehouse...")
+    """Load data from Source & Target and create Temp Views for SQL queries on all 6 tables."""
+    print(" STEP 1: Loading data from SQL Server and Iceberg Lakehouse...")
     
-    # Danh sách 6 bảng dữ liệu cần đối chiếu
+    # List of 6 data tables to reconcile
     tables = [
         ("pnr_records", "src_pnr", "slv_pnr", "demo.silver.pnr_records_clean"),
         ("passengers", "src_pas", "slv_pas", "demo.silver.passengers_clean"),
@@ -86,15 +86,15 @@ def load_and_register_views(spark):
         slv_df = spark.table(slv_table_name)
         slv_df.createOrReplaceTempView(slv_alias)
         
-    print("\033[92m✅ Đã load thành công toàn bộ 6 bảng dữ liệu!\033[0m\n")
+    print("\033[92mSuccessfully loaded all 6 tables!\033[0m\n")
     return spark.table("src_pnr").count()
 
 
 def validate_silver_completeness_uniqueness(spark):
-    """Đối chiếu số lượng bản ghi và kiểm tra trùng lặp cho toàn bộ 6 bảng."""
-    print(" BƯỚC 2: ĐỐI CHIẾU SỐ LƯỢNG & TÍNH DUY NHẤT TẤT CẢ CÁC BẢNG")
+    """Reconcile record counts and check duplicates for all 6 tables."""
+    print(" STEP 2: RECONCILING RECORD COUNTS & UNIQUENESS OF ALL TABLES")
     
-    # 1. Check số lượng tổng cho 6 bảng
+    # 1. Check total counts for 6 tables
     count_df = spark.sql("""
         SELECT 'pnr_records' as table_name, (SELECT COUNT(*) FROM src_pnr) as source_count, (SELECT COUNT(*) FROM slv_pnr) as silver_count, (SELECT COUNT(*) FROM slv_pnr) - (SELECT COUNT(*) FROM src_pnr) as difference
         UNION ALL
@@ -110,7 +110,7 @@ def validate_silver_completeness_uniqueness(spark):
     """)
     count_df.show()
     
-    # 2. Check trùng lặp ID cho toàn bộ 6 bảng
+    # 2. Check primary key duplication for all 6 tables
     pk_checks = [
         ("pnr_records", "slv_pnr", "pnr_id"),
         ("passengers", "slv_pas", "passenger_id"),
@@ -131,16 +131,16 @@ def validate_silver_completeness_uniqueness(spark):
         dup_count = dup_df.count()
         if dup_count > 0:
             total_duplicates += dup_count
-            print(f"\033[91m❌ LỖI: Bảng {tbl_name} có {dup_count} khóa chính ({pk_col}) bị trùng lặp!\033[0m")
+            print(f"\033[91mERROR: Table {tbl_name} has {dup_count} duplicated primary keys ({pk_col})!\033[0m")
             dup_df.show(5)
             
     if total_duplicates == 0:
-        print("\033[92m✅ OK: Không có bản ghi nào bị trùng lặp trên cả 6 bảng.\033[0m\n")
+        print("\033[92mOK: No duplicate records found across all 6 tables.\033[0m\n")
 
 
 def validate_state_consistency(spark):
-    """Kiểm tra tính đồng nhất về trạng thái nghiệp vụ giữa Source và Target."""
-    print(" BƯỚC 3: ĐỐI CHIẾU TRẠNG THÁI NGHIỆP VỤ PNR VÀ PAYMENT")
+    """Check business status consistency between Source and Target."""
+    print(" STEP 3: RECONCILING BUSINESS STATUS FOR PNR AND PAYMENT")
     
     # 1. PNR Status
     pnr_mismatch = spark.sql("""
@@ -150,10 +150,10 @@ def validate_state_consistency(spark):
         WHERE s.booking_status != t.booking_status
     """)
     if pnr_mismatch.count() > 0:
-        print(f"\033[91m⚠️ CẢNH BÁO: Phát hiện {pnr_mismatch.count()} vé PNR bị sai lệch trạng thái!\033[0m")
+        print(f"\033[91mWARNING: Detected {pnr_mismatch.count()} PNR records with mismatched status!\033[0m")
         pnr_mismatch.show(5)
     else:
-        print("\033[92m✅ PNR Status: Khớp 100% giữa Source và Target.\033[0m")
+        print("\033[92mPNR Status: 100% matched between Source and Target.\033[0m")
         
     # 2. Payment Status
     pay_mismatch = spark.sql("""
@@ -163,26 +163,26 @@ def validate_state_consistency(spark):
         WHERE s.payment_status != t.payment_status
     """)
     if pay_mismatch.count() > 0:
-        print(f"\033[91m⚠️ CẢNH BÁO: Phát hiện {pay_mismatch.count()} giao dịch thanh toán bị sai lệch!\033[0m")
+        print(f"\033[91mWARNING: Detected {pay_mismatch.count()} mismatched payment transactions!\033[0m")
         pay_mismatch.show(5)
     else:
-        print("\033[92m✅ Payment Status: Khớp 100% giữa Source và Target.\033[0m\n")
+        print("\033[92mPayment Status: 100% matched between Source and Target.\033[0m\n")
 
 def validate_events_by_date(spark, target_date):
     """
-    Đối chiếu chi tiết booking_events giữa Source và Silver theo từng ngày.
-    So sánh tổng số event và phân rã theo từng loại event_type.
+    Reconcile booking_events details between Source and Silver by date.
+    Compare total events and breakdown by event_type.
     """
-    print(f" BƯỚC 4: ĐỐI CHIẾU BOOKING EVENTS THEO NGÀY (NGÀY {target_date})")
+    print(f" STEP 4: RECONCILING BOOKING EVENTS BY DATE (DATE {target_date})")
     
-    # 1. So sánh tổng số event theo ngày
+    # 1. Compare total events by date
     src_total = spark.sql(f"SELECT COUNT(*) FROM src_be WHERE CAST(created_at AS DATE) = '{target_date}'").collect()[0][0] or 0
     slv_total = spark.sql(f"SELECT COUNT(*) FROM slv_be WHERE CAST(created_at AS DATE) = '{target_date}'").collect()[0][0] or 0
     
-    print(f"  [Source] booking_events ngày {target_date}: {src_total} events")
-    print(f"  [Silver] booking_events ngày {target_date}: {slv_total} events")
+    print(f"  [Source] booking_events on {target_date}: {src_total} events")
+    print(f"  [Silver] booking_events on {target_date}: {slv_total} events")
     
-    # 2. So sánh chi tiết từng loại event_type
+    # 2. Compare details for each event_type
     detail_df = spark.sql(f"""
         SELECT 
             COALESCE(s.event_type, t.event_type) as event_type,
@@ -206,32 +206,32 @@ def validate_events_by_date(spark, target_date):
     detail_df.show()
     
     if src_total == slv_total:
-        print(f"  \033[92m✅ OK: Số lượng event giữa Source và Target ngày {target_date} khớp 100%!\033[0m\n")
+        print(f"  \033[92mOK: Event counts between Source and Target on {target_date} matched 100%!\033[0m\n")
     else:
-        print(f"  \033[91m⚠️ CẢNH BÁO: Lệch {abs(src_total - slv_total)} event giữa Source và Target vào ngày {target_date}!\033[0m\n")
+        print(f"  \033[91mWARNING: Mismatch of {abs(src_total - slv_total)} events between Source and Target on {target_date}!\033[0m\n")
 
 def main():
-    parser = argparse.ArgumentParser(description="Đối chiếu chất lượng dữ liệu Flight Booking")
-    parser.add_argument("--silver", action="store_true", help="Chạy kiểm định tầng Silver")
-    parser.add_argument("--state", action="store_true", help="Chạy đối chiếu trạng thái nghiệp vụ")
-    parser.add_argument("--events-date", action="store_true", help="Chạy đối chiếu booking_events theo ngày")
+    parser = argparse.ArgumentParser(description="Flight Booking Data Quality Reconciliation")
+    parser.add_argument("--silver", action="store_true", help="Run Silver layer validation")
+    parser.add_argument("--state", action="store_true", help="Run business status reconciliation")
+    parser.add_argument("--events-date", action="store_true", help="Run booking_events reconciliation by date")
     parser.add_argument(
         "--steps",
         nargs="+",
         choices=["silver", "state", "events_date"],
-        help="Danh sách cụ thể các bước kiểm định cần chạy (silver, state, events_date)"
+        help="Specific validation steps to run (silver, state, events_date)"
     )
     parser.add_argument(
         "--date",
         type=str,
         default=datetime.now().strftime("%Y-%m-%d"),
-        help="Ngày cần kiểm định sự kiện (Định dạng YYYY-MM-DD, mặc định là hôm nay)"
+        help="Date to validate events (Format YYYY-MM-DD, defaults to today)"
     )
     
     args = parser.parse_args()
     target_date = args.date
     
-    # Xác định các bước kiểm định cần chạy
+    # Determine validation steps to run
     steps_to_run = set()
     if args.steps:
         steps_to_run.update(args.steps)
@@ -242,24 +242,24 @@ def main():
     if args.events_date:
         steps_to_run.add("events_date")
         
-    # Mặc định chạy tất cả nếu không chỉ định cụ thể bước nào
+    # Default to running all steps if none specified
     if not steps_to_run:
         steps_to_run = {"silver", "state", "events_date"}
 
-    # 1. Tạo thư mục reports nếu chưa tồn tại
+    # 1. Create reports directory if it does not exist
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
     reports_dir = os.path.join(project_root, 'reports')
     os.makedirs(reports_dir, exist_ok=True)
     
-    # 2. Tạo tên file theo định dạng: report_YYYYMMDD_HHMMSS.txt
+    # 2. Create file name format: report_YYYYMMDD_HHMMSS.txt
     now = datetime.now()
     timestamp_str = now.strftime("%Y%m%d_%H%M%S")
     report_filename = f"report_{timestamp_str}.txt"
     report_filepath = os.path.join(reports_dir, report_filename)
     
-    # 3. Kích hoạt TeeLogger
+    # 3. Activate TeeLogger
     logger = TeeLogger(report_filepath)
     original_stdout = sys.stdout
     sys.stdout = logger
@@ -270,11 +270,11 @@ def main():
     try:
         print("=" * 70)
         print("   DATA QUALITY RECONCILIATION REPORT ")
-        print(f"   Các bước chạy: {', '.join(sorted(steps_to_run)).upper()}")
-        print(f"   Thời gian tạo: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   Steps run: {', '.join(sorted(steps_to_run)).upper()}")
+        print(f"   Created at: {now.strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 70)
         
-        # Khởi tạo Spark Session
+        # Initialize Spark Session
         spark = create_spark_session()
         
         total_source_pnr = load_and_register_views(spark)
@@ -288,17 +288,17 @@ def main():
             validate_events_by_date(spark, target_date)
             
         print("=" * 70)
-        print("\033[92m   HOÀN THÀNH TIẾN TRÌNH KIỂM ĐỊNH DỮ LIỆU!\033[0m")
+        print("   COMPLETED DATA QUALITY RECONCILIATION PROCESS!")
         print("=" * 70)
          
     except Exception as e:
-        print(f"\033[91m❌ Có lỗi xảy ra trong quá trình đối chiếu: {str(e)}\033[0m")
+        print(f"Error occurred during reconciliation: {str(e)}")
     finally:
         if spark:
             spark.stop()
         sys.stdout = original_stdout
         logger.close()
-        print(f"\n--> Báo cáo đối chiếu dữ liệu đã được lưu thành công tại:\n   {report_filepath}\n")
+        print(f"\n--> Data quality reconciliation report successfully saved at:\n   {report_filepath}\n")
 
 
 if __name__ == "__main__":
