@@ -35,6 +35,8 @@ flight-booking-cdc-pipeline/
 │       └── make_payment.py     # Process a transaction payment (Make Payment scenario)
 │
 ├── connectors/                 # Kafka Connect configurations
+│   ├── README.md               # Connector guide (Vietnamese version)
+│   ├── README_EN.md            # Connector guide (English version)
 │   ├── debezium-source.json    # JSON configuration for Debezium source (reads from SQL Server)
 │   └── minio-sink.json         # JSON configuration for MinIO sink (dumps data from Kafka to MinIO Data Lake)
 │
@@ -42,8 +44,25 @@ flight-booking-cdc-pipeline/
 │   └── create_iceberg_tables.ipynb  # Notebook to initialize Iceberg tables
 │
 ├── spark/                      # Apache Spark home directory
+│   ├── README.md               # Spark execution guide (Vietnamese version)
+│   ├── README_EN.md            # Spark execution guide (English version)
 │   ├── jars/                   # Driver JAR files (MSSQL JDBC, AWS Bundle, Hadoop AWS)
 │   └── scripts/                # PySpark ETL scripts (minio_loader, bronze_to_silver_transformer,...)
+│
+├── trino/                      # Trino configurations for querying data from Iceberg
+│   └── etc/
+│       └── catalog/
+│           └── iceberg.properties # Iceberg connector properties for Trino
+│
+├── superset/                   # Apache Superset configurations for BI and data visualization
+│   ├── Dockerfile              # Custom Dockerfile for Superset setup
+│   └── superset_home/          # Home directory storing dashboard configs & database credentials
+│
+├── monitoring/                 # Monitoring configurations (Prometheus, Grafana)
+│   ├── prometheus.yml          # Prometheus configuration file for scraping metrics
+│   ├── debezium-dashboard.json # Grafana Dashboard template for Debezium
+│   ├── kafka-dashboard.json    # Grafana Dashboard template for Kafka
+│   └── grafana/                # Provisioning dashboard and data source configs for Grafana
 │
 └── conf/                       # System configuration files
     └── spark-defaults.conf     # Default configurations for Spark Iceberg
@@ -159,7 +178,7 @@ Supported scenario names (`<scenario_name>`):
 Detailed steps to register connectors, initialize the Data Lake, and run the Spark ETL transformations.
 
 ### 1. Register the Debezium Source Connector
-Register the Debezium Source Connector to start capturing changes (CDC) from SQL Server and publish them to Kafka. Check [connectors/README.md] for details.
+Register the Debezium Source Connector to start capturing changes (CDC) from SQL Server and publish them to Kafka. Check [connectors/README_EN.md] for details.
 ```bash
 curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d @connectors/debezium-source.json
 ```
@@ -187,7 +206,7 @@ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" 
   ```
 
 ### 6. Run Spark ETL Jobs
-Use `spark-submit` to execute the ETL scripts inside the Spark container (see [spark/README.md] for more information):
+Use `spark-submit` to execute the ETL scripts inside the Spark container (see [spark/README_EN.md] for more information):
 - **Load Raw Data from MinIO to Bronze Tables:**
   ```bash
   docker compose exec spark-iceberg /opt/spark/bin/spark-submit \
@@ -210,3 +229,26 @@ Use `spark-submit` to execute the ETL scripts inside the Spark container (see [s
     --jars /home/iceberg/pyspark/jars/mssql-jdbc-12.4.2.jre11.jar,/home/iceberg/pyspark/jars/hadoop-aws-3.3.4.jar,/home/iceberg/pyspark/jars/aws-java-sdk-bundle-1.12.262.jar \
     /home/iceberg/pyspark/scripts/data_reconciliation.py
   ```
+
+### 7. BI Dashboard Setup (Superset) & System Monitoring (Prometheus/Grafana)
+
+Once the Docker Compose services are fully running, you can access the BI and system monitoring tools via the following local URLs:
+
+* **Apache Superset (BI Tool):**
+  * URL: [http://localhost:8088](http://localhost:8088)
+  * Default Credentials: `admin` / `admin`
+  * **Connecting to Apache Iceberg via Trino:**
+    1. In the Superset Web UI, navigate to **Settings** -> **Database Connections** -> **+ Database**.
+    2. Select **Trino** as the database type.
+    3. Input the Connection URI: `trino://admin@trino:8080/iceberg`
+    4. Click **Connect** and save. You can now query and build dashboards from your Iceberg tables (Silver, Gold layers).
+
+* **Prometheus (Metrics Collection):**
+  * URL: [http://localhost:9090](http://localhost:9090)
+  * Used to view scrape targets and raw metrics for Kafka, Debezium, etc.
+
+* **Grafana (Monitoring Dashboards):**
+  * URL: [http://localhost:3000](http://localhost:3000)
+  * Default Credentials: `admin` / `admin`
+  * Automatically provisioned with sample dashboards for monitoring Kafka and Debezium Connect metrics.
+

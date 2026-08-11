@@ -12,6 +12,7 @@ flight-booking-cdc-pipeline/
 ├── .env.example                # Hướng dẫn các biến môi trường cấu hình hệ thống
 ├── requirements.txt            # Danh sách thư viện Python cần cài đặt (faker, pyodbc,...)
 ├── README.md                   # Tài liệu hướng dẫn cách chạy dự án
+├── README_EN.md                # Tài liệu hướng dẫn cách chạy dự án (Tiếng Anh)
 ├── download_jars.sh            # Script bash tải các file jar phục vụ Spark
 │
 ├── db/                         # Thư mục chứa toàn bộ script Database
@@ -34,6 +35,8 @@ flight-booking-cdc-pipeline/
 │       └── make_payment.py     # Kịch bản thanh toán (Make Payment)
 │
 ├── connectors/                 # Thư mục chứa cấu hình của Kafka Connect
+│   ├── README.md               # Hướng dẫn kết nối Connector (Tiếng Việt)
+│   ├── README_EN.md            # Hướng dẫn kết nối Connector (Tiếng Anh)
 │   ├── debezium-source.json    # File JSON cấu hình Debezium đọc từ SQL Server
 │   └── minio-sink.json         # File JSON cấu hình đẩy dữ liệu từ Kafka xuống Data Lake (MinIO)
 │
@@ -41,8 +44,25 @@ flight-booking-cdc-pipeline/
 │   └── create_iceberg_tables.ipynb  # Notebook tạo các bảng Iceberg
 │
 ├── spark/                      # Thư mục quản lý Spark
+│   ├── README.md               # Hướng dẫn chạy tiến trình Spark (Tiếng Việt)
+│   ├── README_EN.md            # Hướng dẫn chạy tiến trình Spark (Tiếng Anh)
 │   ├── jars/                   # Thư mục chứa các driver JAR (MSSQL JDBC, AWS Bundle, Hadoop AWS)
 │   └── scripts/                # Thư mục chứa các script xử lý PySpark (minio_loader, bronze_to_silver_transformer,...)
+│
+├── trino/                      # Thư mục cấu hình Trino phục vụ truy vấn dữ liệu từ Iceberg
+│   └── etc/
+│       └── catalog/
+│           └── iceberg.properties # Cấu hình kết nối Iceberg catalog cho Trino
+│
+├── superset/                   # Thư mục cấu hình Apache Superset để trực quan hóa dữ liệu (BI)
+│   ├── Dockerfile              # Dockerfile tùy chỉnh cho Superset
+│   └── superset_home/          # Lưu trữ cấu hình và dashboard của Superset
+│
+├── monitoring/                 # Thư mục cấu hình giám sát hệ thống (Prometheus, Grafana)
+│   ├── prometheus.yml          # File cấu hình Prometheus thu thập metrics
+│   ├── debezium-dashboard.json # Grafana Dashboard mẫu cho Debezium
+│   ├── kafka-dashboard.json    # Grafana Dashboard mẫu cho Kafka
+│   └── grafana/                # Thư mục chứa các file provisioning cho Grafana
 │
 └── conf/                       # Thư mục cấu hình hệ thống
     └── spark-defaults.conf     # File cấu hình mặc định cho Spark Iceberg
@@ -209,3 +229,25 @@ Dùng Spark-submit để chạy các script ETL trong Spark container (xem thêm
     --jars /home/iceberg/pyspark/jars/mssql-jdbc-12.4.2.jre11.jar,/home/iceberg/pyspark/jars/hadoop-aws-3.3.4.jar,/home/iceberg/pyspark/jars/aws-java-sdk-bundle-1.12.262.jar \
     /home/iceberg/pyspark/scripts/data_reconciliation.py
   ```
+
+### 7. Truy cập và Dựng BI (Superset) & Giám sát hệ thống (Prometheus/Grafana)
+
+Sau khi khởi chạy Docker Compose, các dịch vụ trực quan hóa dữ liệu (BI) và giám sát hệ thống có thể được truy cập qua các địa chỉ và port sau:
+
+* **Apache Superset (BI Tool):**
+  * Địa chỉ: [http://localhost:8088](http://localhost:8088)
+  * Tài khoản mặc định: `admin` / `admin`
+  * **Hướng dẫn kết nối với Apache Iceberg thông qua Trino:**
+    1. Trên giao diện Superset, chọn **Settings** -> **Database Connections** -> **+ Database**.
+    2. Chọn database type là **Trino**.
+    3. Nhập chuỗi kết nối (Connection URI): `trino://admin@trino:8080/iceberg`
+    4. Nhấp **Connect** và lưu lại. Bây giờ bạn có thể truy vấn và xây dựng dashboard từ các bảng dữ liệu Iceberg (Silver, Gold).
+
+* **Prometheus (Thu thập Metrics):**
+  * Địa chỉ: [http://localhost:9090](http://localhost:9090)
+  * Dùng để kiểm tra trạng thái các target giám sát (Kafka, Debezium,...).
+
+* **Grafana (Trực quan hóa giám sát):**
+  * Địa chỉ: [http://localhost:3000](http://localhost:3000)
+  * Tài khoản mặc định: `admin` / `admin`
+  * Hệ thống đã tích hợp sẵn các dashboard mẫu cho Kafka và Debezium Connect.
